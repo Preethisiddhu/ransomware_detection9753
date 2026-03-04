@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ransomware Detection Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h2>Ransomware Detection Dashboard</h2>
+
+  <div class="cards">
+    <div class="card" id="status-card">
+      <h3>System Status</h3>
+      <p id="status-text">Loading...</p>
+      <p>Last detection: <span id="last-detection">-</span></p>
+    </div>
+    <div class="card">
+      <h3>Events (24h)</h3>
+      <p id="total-events">0</p>
+    </div>
+    <div class="card">
+      <h3>Suspicious Processes</h3>
+      <p id="suspicious-count">0</p>
+    </div>
+  </div>
+
+  <h3>Recent File Events</h3>
+  <table id="events-table">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Process</th>
+        <th>PID</th>
+        <th>Operation</th>
+        <th>Path</th>
+        <th>Risk</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h3>Suspicious Processes</h3>
+  <table id="suspicious-table">
+    <thead>
+      <tr>
+        <th>Process</th>
+        <th>PID</th>
+        <th>Files touched</th>
+        <th>Risk</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="app.js"></script>
+</body>
+</html>
