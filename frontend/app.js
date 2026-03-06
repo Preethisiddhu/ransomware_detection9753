@@ -71,5 +71,6 @@ async function refresh() {
   }
 }
 
-setInterval(refresh, 3000);
+// Refresh every second for faster UI feedback
+setInterval(refresh, 1000);
 refresh();
