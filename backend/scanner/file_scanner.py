@@ -7,7 +7,11 @@ SUSPICIOUS_EXTS = {
     ".scr", ".jar", ".hta", ".docm", ".xlsm", ".macro"
 }
 
-# Very simple suspicious strings list (you can expand)
+COMPRESSED_EXTS = {
+    ".pdf", ".zip", ".rar", ".7z", ".gz", ".png", ".jpg",
+    ".jpeg", ".mp3", ".mp4", ".docx", ".xlsx", ".pptx"
+}
+
 SUSPICIOUS_STRINGS = [
     "vssadmin delete shadows",
     "wbadmin delete catalog",
@@ -24,22 +28,16 @@ SUSPICIOUS_STRINGS = [
 
 
 def _file_entropy(path: str, max_bytes: int = 1024 * 1024) -> float:
-    """
-    Shannon entropy (0..8 bits/byte) on at most max_bytes of the file.
-    """
     try:
         with open(path, "rb") as f:
             data = f.read(max_bytes)
     except Exception:
         return 0.0
-
     if not data:
         return 0.0
-
     counts = [0] * 256
     for b in data:
         counts[b] += 1
-
     entropy = 0.0
     length = float(len(data))
     for c in counts:
@@ -51,9 +49,6 @@ def _file_entropy(path: str, max_bytes: int = 1024 * 1024) -> float:
 
 
 def _scan_strings(path: str, max_bytes: int = 1024 * 1024) -> List[str]:
-    """
-    Look for suspicious strings in text-ish content.
-    """
     hits: List[str] = []
     try:
         with open(path, "rb") as f:
@@ -61,7 +56,6 @@ def _scan_strings(path: str, max_bytes: int = 1024 * 1024) -> List[str]:
         text = data.decode("utf-8", errors="ignore").lower()
     except Exception:
         return hits
-
     for s in SUSPICIOUS_STRINGS:
         if s.lower() in text:
             hits.append(s)
@@ -69,13 +63,10 @@ def _scan_strings(path: str, max_bytes: int = 1024 * 1024) -> List[str]:
 
 
 def scan_file(path: str) -> Dict[str, object]:
-    """
-    Heuristic scan: returns a dict with score and reasons.
-    """
     result: Dict[str, object] = {
-        "path": path,
-        "exists": os.path.isfile(path),
-        "score": 0.0,
+        "path":    path,
+        "exists":  os.path.isfile(path),
+        "score":   0.0,
         "reasons": [],
         "entropy": 0.0,
     }
@@ -86,26 +77,24 @@ def scan_file(path: str) -> Dict[str, object]:
 
     _, ext = os.path.splitext(path.lower())
 
-    # Extension-based suspicion
     if ext in SUSPICIOUS_EXTS:
         result["score"] = max(result["score"], 0.4)
         result["reasons"].append(f"suspicious_extension:{ext}")
 
-    # Entropy
     ent = _file_entropy(path)
     result["entropy"] = ent
-    if ent > 7.0:  # very high entropy ~ likely encrypted/packed
-        result["score"] = max(result["score"], 0.6)
-        result["reasons"].append(f"high_entropy:{ent:.2f}")
 
-    # Suspicious strings
+    if ext not in COMPRESSED_EXTS:
+        if ent > 7.0:
+            result["score"] = max(result["score"], 0.6)
+            result["reasons"].append(f"high_entropy:{ent:.2f}")
+
     hits = _scan_strings(path)
     if hits:
         result["score"] = max(result["score"], 0.8)
         result["reasons"].append(f"suspicious_strings:{len(hits)}")
 
-    # Clamp score 0..1
-    result["score"] = round(min(result["score"], 1.0), 2)
+    result["score"]     = round(min(result["score"], 1.0), 2)
     result["malicious"] = result["score"] >= 0.7
 
     return result

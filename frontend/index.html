@@ -1,57 +1,471 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Ransomware Detection Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RansomGuard — Detection Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0c10;--surface:#111318;--surface2:#181c24;--border:#1e2330;
+  --accent:#e8354a;--accent2:#ff6b35;--safe:#00d97e;--warn:#f4c542;--crit:#e8354a;
+  --text:#e2e8f0;--muted:#64748b;--mono:'JetBrains Mono',monospace;
+  --sans:'DM Sans',sans-serif;
+}
+html{font-size:14px}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&family=Orbitron:wght@700;900&display=swap');
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.2rem 2rem;border-bottom:1px solid var(--border);
+  background:linear-gradient(90deg,#0d0f14 0%,#111318 100%);
+  position:sticky;top:0;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:.75rem}
+.logo-icon{width:36px;height:36px}
+.logo-text{font-family:'Orbitron',sans-serif;font-size:1.15rem;font-weight:900;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:.7rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-top:.1rem}
+.conn-badge{display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--muted)}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:.3s}
+.conn-dot.live{background:var(--safe);box-shadow:0 0 8px var(--safe);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.header-time{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+main{display:grid;grid-template-columns:1fr;gap:1.5rem;padding:1.5rem 2rem;max-width:1600px;margin:0 auto}
+.status-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:1.2rem 1.4rem;position:relative;overflow:hidden;transition:.2s;
+}
+.stat-card::before{
+  content:'';position:absolute;inset:0;opacity:.05;
+  background:linear-gradient(135deg,var(--accent),transparent);pointer-events:none;
+}
+.stat-card.safe::before{background:linear-gradient(135deg,var(--safe),transparent)}
+.stat-card.warn::before{background:linear-gradient(135deg,var(--warn),transparent)}
+.stat-card.crit::before{background:linear-gradient(135deg,var(--crit),transparent);opacity:.12}
+.stat-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.5rem}
+.stat-value{font-family:'Orbitron',sans-serif;font-size:1.9rem;font-weight:700;line-height:1}
+.stat-value.safe{color:var(--safe)}
+.stat-value.warn{color:var(--warn)}
+.stat-value.crit{color:var(--crit);animation:flicker .8s infinite}
+@keyframes flicker{0%,100%{opacity:1}50%{opacity:.7}}
+.stat-sub{font-size:.7rem;color:var(--muted);margin-top:.35rem}
+.system-status{display:flex;align-items:center;gap:.6rem}
+.status-pill{
+  padding:.25rem .8rem;border-radius:999px;font-size:.7rem;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;
+}
+.status-pill.safe{background:rgba(0,217,126,.15);color:var(--safe);border:1px solid rgba(0,217,126,.3)}
+.status-pill.suspicious{background:rgba(244,197,66,.15);color:var(--warn);border:1px solid rgba(244,197,66,.3)}
+.status-pill.ransomware_detected{background:rgba(232,53,74,.2);color:var(--crit);border:1px solid rgba(232,53,74,.4);animation:pill-flash 1s infinite}
+@keyframes pill-flash{0%,100%{background:rgba(232,53,74,.2)}50%{background:rgba(232,53,74,.4)}}
+.section{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.85rem 1.2rem;border-bottom:1px solid var(--border);background:var(--surface2);
+}
+.section-title{font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.12em;
+  display:flex;align-items:center;gap:.6rem}
+.badge{font-size:.65rem;padding:.15rem .5rem;border-radius:4px;font-family:var(--mono);background:var(--border);color:var(--muted)}
+.badge.alert{background:rgba(232,53,74,.2);color:var(--crit)}
+.badge.safe{background:rgba(0,217,126,.15);color:var(--safe)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:960px){.two-col{grid-template-columns:1fr}}
+.tbl-wrap{overflow-x:auto;max-height:320px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+thead th{
+  padding:.6rem 1rem;text-align:left;font-size:.65rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  background:var(--surface2);position:sticky;top:0;z-index:1;white-space:nowrap;
+}
+tbody tr{border-bottom:1px solid var(--border);transition:.15s}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:.55rem 1rem;color:var(--text);font-family:var(--mono);font-size:.76rem}
+.cell-path{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:.72rem}
+.empty-row td{text-align:center;color:var(--muted);padding:2rem;font-family:var(--sans)}
+.op{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.op-create{background:rgba(0,217,126,.15);color:var(--safe)}
+.op-modify{background:rgba(244,197,66,.12);color:var(--warn)}
+.op-delete{background:rgba(232,53,74,.18);color:var(--crit)}
+.op-rename{background:rgba(148,163,184,.12);color:#94a3b8}
+.risk-wrap{display:flex;align-items:center;gap:.5rem}
+.risk-bar{width:60px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.risk-fill{height:100%;border-radius:3px;transition:.4s}
+.risk-val{font-size:.72rem;font-weight:600;font-family:var(--mono);width:32px;text-align:right}
+.entropy-val{font-family:var(--mono);font-size:.76rem}
+.reasons{display:flex;flex-wrap:wrap;gap:.25rem;max-width:200px}
+.reason-tag{font-size:.6rem;padding:.1rem .35rem;border-radius:3px;background:rgba(232,53,74,.15);color:var(--crit);font-family:var(--mono)}
+.reason-tag.low{background:rgba(244,197,66,.12);color:var(--warn)}
+.malicious-yes{color:var(--crit);font-weight:700}
+.malicious-no{color:var(--safe)}
+.alert-list{padding:.5rem}
+.alert-item{
+  display:flex;align-items:flex-start;gap:.75rem;
+  padding:.75rem 1rem;margin:.3rem 0;border-radius:8px;
+  background:rgba(232,53,74,.08);border:1px solid rgba(232,53,74,.25);
+  animation:slideIn .3s ease;
+}
+.alert-item.warning{background:rgba(244,197,66,.08);border-color:rgba(244,197,66,.25)}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.alert-icon{font-size:1.2rem;flex-shrink:0}
+.alert-body{flex:1}
+.alert-title{font-weight:600;font-size:.8rem;color:var(--crit)}
+.alert-item.warning .alert-title{color:var(--warn)}
+.alert-meta{font-size:.7rem;color:var(--muted);margin-top:.2rem;font-family:var(--mono)}
+.alert-empty{text-align:center;color:var(--muted);padding:1.5rem;font-size:.8rem}
+tr.malicious-row{background:rgba(232,53,74,.06)!important}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.filter-bar{display:flex;gap:.5rem;padding:.6rem 1.2rem;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.filter-btn{
+  font-size:.68rem;padding:.2rem .6rem;border-radius:4px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;transition:.15s;font-family:var(--sans);
+}
+.filter-btn:hover,.filter-btn.active{background:var(--surface2);color:var(--text);border-color:#3a4257}
+</style>
 </head>
 <body>
-  <h2>Ransomware Detection Dashboard</h2>
 
-  <div class="cards">
-    <div class="card" id="status-card">
-      <h3>System Status</h3>
-      <p id="status-text">Loading...</p>
-      <p>Last detection: <span id="last-detection">-</span></p>
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 36 36" fill="none" width="36" height="36">
+        <polygon points="18,3 33,30 3,30" fill="none" stroke="#e8354a" stroke-width="2.5"/>
+        <line x1="18" y1="12" x2="18" y2="22" stroke="#e8354a" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="18" cy="26" r="1.5" fill="#e8354a"/>
+      </svg>
     </div>
-    <div class="card">
-      <h3>Events (24h)</h3>
-      <p id="total-events">0</p>
+    <div>
+      <div class="logo-text">RansomGuard</div>
+      <div class="logo-sub">Threat Detection System</div>
     </div>
-    <div class="card">
-      <h3>Suspicious Processes</h3>
-      <p id="suspicious-count">0</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:1.5rem">
+    <div class="conn-badge">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-label">Connecting...</span>
+    </div>
+    <div class="header-time" id="clock"></div>
+  </div>
+</header>
+
+<main>
+
+  <div class="status-bar">
+    <div class="stat-card" id="sc-status">
+      <div class="stat-label">System Status</div>
+      <div class="system-status">
+        <span class="status-pill safe" id="status-pill">SAFE</span>
+      </div>
+      <div class="stat-sub" id="last-det">Last detection: -</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Events (24 h)</div>
+      <div class="stat-value" id="total-events">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Suspicious Processes</div>
+      <div class="stat-value" id="susp-count">0</div>
+    </div>
+    <div class="stat-card" id="sc-alerts">
+      <div class="stat-label">Active Mass Alerts</div>
+      <div class="stat-value safe" id="alert-count">0</div>
+      <div class="stat-sub">in last 60 s</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Malicious Files Found</div>
+      <div class="stat-value" id="malicious-count">0</div>
     </div>
   </div>
 
-  <h3>Recent File Events</h3>
-  <table id="events-table">
-    <thead>
-      <tr>
-        <th>Time</th>
-        <th>Process</th>
-        <th>PID</th>
-        <th>Operation</th>
-        <th>Path</th>
-        <th>Risk</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        Mass Activity Alerts
+        <span class="badge alert" id="alert-badge">0</span>
+      </div>
+      <span style="font-size:.7rem;color:var(--muted)">Triggers when 5 or more events of same type in 10s</span>
+    </div>
+    <div class="alert-list" id="alert-list">
+      <div class="alert-empty">No mass-activity alerts. System normal.</div>
+    </div>
+  </div>
 
-  <h3>Suspicious Processes</h3>
-  <table id="suspicious-table">
-    <thead>
-      <tr>
-        <th>Process</th>
-        <th>PID</th>
-        <th>Files touched</th>
-        <th>Risk</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div class="two-col">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">
+          File Events
+          <span class="badge" id="event-badge">0</span>
+        </div>
+      </div>
+      <div class="filter-bar" id="event-filters">
+        <button class="filter-btn active" data-op="all">All</button>
+        <button class="filter-btn" data-op="create">Create</button>
+        <button class="filter-btn" data-op="modify">Modify</button>
+        <button class="filter-btn" data-op="delete">Delete</button>
+        <button class="filter-btn" data-op="rename">Rename</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Time</th><th>Operation</th><th>Path</th><th>Process</th><th>Risk</th>
+          </tr></thead>
+          <tbody id="events-body"><tr class="empty-row"><td colspan="5">No events yet</td></tr></tbody>
+        </table>
+      </div>
+    </div>
 
-  <script src="app.js"></script>
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">
+          File Scan Results
+          <span class="badge" id="scan-badge">0</span>
+        </div>
+      </div>
+      <div class="filter-bar" id="scan-filters">
+        <button class="filter-btn active" data-mal="all">All</button>
+        <button class="filter-btn" data-mal="true">Malicious</button>
+        <button class="filter-btn" data-mal="false">Clean</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Time</th><th>File</th><th>Score</th><th>Entropy</th><th>Malicious</th><th>Reasons</th>
+          </tr></thead>
+          <tbody id="scans-body"><tr class="empty-row"><td colspan="6">No scans yet</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Suspicious Processes</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Process</th><th>PID</th><th>Files Touched</th><th>Max Risk</th>
+          </tr></thead>
+          <tbody id="procs-body"><tr class="empty-row"><td colspan="4">No suspicious processes</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Manual File Scan</div>
+      </div>
+      <div style="padding:1rem 1.2rem">
+        <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+          <input id="scan-input" type="text" placeholder="C:\path\to\file.exe"
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+                   padding:.5rem .75rem;color:var(--text);font-family:var(--mono);font-size:.78rem;outline:none"/>
+          <button onclick="manualScan()"
+            style="padding:.5rem 1rem;background:var(--accent);border:none;border-radius:6px;
+                   color:#fff;font-weight:600;cursor:pointer;font-size:.8rem;white-space:nowrap">
+            Scan
+          </button>
+        </div>
+        <div id="manual-result" style="font-size:.78rem;font-family:var(--mono);color:var(--muted)">
+          Enter a file path and click Scan.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API = 'http://127.0.0.1:8000/api';
+const FETCH_OPTS = { cache: 'no-store' };
+let allEvents = [], allScans = [], eventFilter = 'all', scanFilter = 'all';
+
+function tick(){
+  document.getElementById('clock').textContent =
+    new Date().toUTCString().replace('GMT','UTC');
+}
+tick(); setInterval(tick,1000);
+
+function setConn(live){
+  document.getElementById('conn-dot').className='conn-dot'+(live?' live':'');
+  document.getElementById('conn-label').textContent=live?'Live':'Disconnected';
+}
+
+function fmtTime(iso){
+  try{
+    const d=new Date(iso.endsWith('Z')?iso:iso+'Z');
+    return d.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }catch{return iso?.slice(11,19)||'-'}
+}
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function riskColor(r){
+  if(r>=.7) return '#e8354a';
+  if(r>=.4) return '#f4c542';
+  return '#00d97e';
+}
+function riskHtml(r){
+  const pct=Math.round(r*100);
+  return `<div class="risk-wrap">
+    <div class="risk-bar"><div class="risk-fill" style="width:${pct}%;background:${riskColor(r)}"></div></div>
+    <span class="risk-val" style="color:${riskColor(r)}">${r.toFixed(2)}</span>
+  </div>`;
+}
+function opHtml(op){
+  const cls={create:'op-create',modify:'op-modify',delete:'op-delete',rename:'op-rename'}[op]||'';
+  return `<span class="op ${cls}">${escHtml(op)}</span>`;
+}
+function shortPath(p){
+  const parts=p.replace(/\\/g,'/').split('/');
+  return parts.slice(-2).join('/');
+}
+
+function renderEvents(){
+  const body=document.getElementById('events-body');
+  const list=eventFilter==='all'?allEvents:allEvents.filter(e=>e.operation===eventFilter);
+  document.getElementById('event-badge').textContent=allEvents.length;
+  if(!list.length){body.innerHTML='<tr class="empty-row"><td colspan="5">No events</td></tr>';return;}
+  body.innerHTML=list.map(e=>`<tr>
+    <td>${fmtTime(e.timestamp)}</td>
+    <td>${opHtml(e.operation)}</td>
+    <td class="cell-path" title="${escHtml(e.path)}">${escHtml(shortPath(e.path))}</td>
+    <td style="color:var(--muted);font-size:.7rem">${escHtml(e.process_name)}</td>
+    <td>${riskHtml(e.risk_score)}</td>
+  </tr>`).join('');
+}
+
+function renderScans(){
+  const body=document.getElementById('scans-body');
+  const list=scanFilter==='all'?allScans
+    :allScans.filter(s=>String(s.malicious)===(scanFilter==='true'?'true':'false'));
+  document.getElementById('scan-badge').textContent=allScans.length;
+  document.getElementById('malicious-count').textContent=allScans.filter(s=>s.malicious).length;
+  if(!list.length){body.innerHTML='<tr class="empty-row"><td colspan="6">No scan results</td></tr>';return;}
+  body.innerHTML=list.map(s=>{
+    const reasons=(s.reasons||[]);
+    const reasonsHtml=reasons.length
+      ?`<div class="reasons">${reasons.map(r=>`<span class="reason-tag${r.includes('string')?'':' low'}">${escHtml(r.replace(/:/g,': '))}</span>`).join('')}</div>`
+      :'<span style="color:var(--muted);font-size:.7rem">-</span>';
+    return `<tr class="${s.malicious?'malicious-row':''}">
+      <td>${fmtTime(s.scanned_at||s.timestamp||'')}</td>
+      <td class="cell-path" title="${escHtml(s.path)}">${escHtml(shortPath(s.path))}</td>
+      <td>${riskHtml(s.score)}</td>
+      <td><span class="entropy-val" style="color:${s.entropy>7?'var(--crit)':s.entropy>5?'var(--warn)':'var(--muted)'}">${(s.entropy||0).toFixed(2)}</span></td>
+      <td class="${s.malicious?'malicious-yes':'malicious-no'}">${s.malicious?'YES':'Clean'}</td>
+      <td>${reasonsHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAlerts(alerts){
+  const list=document.getElementById('alert-list');
+  const badge=document.getElementById('alert-badge');
+  const countEl=document.getElementById('alert-count');
+  badge.textContent=alerts.length;
+  countEl.textContent=alerts.length;
+  countEl.className='stat-value '+(alerts.length>0?'crit':'safe');
+  document.getElementById('sc-alerts').className='stat-card '+(alerts.length>0?'crit':'safe');
+  if(!alerts.length){list.innerHTML='<div class="alert-empty">No mass-activity alerts. System normal.</div>';return;}
+  list.innerHTML=alerts.slice(0,10).map(a=>{
+    const isCrit=a.severity==='critical';
+    return `<div class="alert-item ${isCrit?'':'warning'}">
+      <div class="alert-icon">${isCrit?'🔥':'⚠️'}</div>
+      <div class="alert-body">
+        <div class="alert-title">MASS ${a.operation.toUpperCase()} DETECTED — ${a.count} files in ${a.window_secs}s</div>
+        <div class="alert-meta">process: ${escHtml(a.process_name)} · ${fmtTime(a.timestamp)} UTC · severity: ${a.severity.toUpperCase()}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderProcs(procs){
+  const body=document.getElementById('procs-body');
+  document.getElementById('susp-count').textContent=procs.length;
+  if(!procs.length){body.innerHTML='<tr class="empty-row"><td colspan="4">No suspicious processes</td></tr>';return;}
+  body.innerHTML=procs.map(p=>`<tr>
+    <td>${escHtml(p.process_name)}</td>
+    <td style="color:var(--muted)">${p.pid}</td>
+    <td>${p.files_touched}</td>
+    <td>${riskHtml(p.risk_score)}</td>
+  </tr>`).join('');
+}
+
+function renderStatus(s){
+  const pill=document.getElementById('status-pill');
+  pill.textContent={safe:'SAFE',suspicious:'SUSPICIOUS',ransomware_detected:'RANSOMWARE DETECTED!'}[s.status]||s.status;
+  pill.className='status-pill '+s.status;
+  document.getElementById('total-events').textContent=s.total_events_24h;
+  document.getElementById('last-det').textContent=
+    s.last_detection_time?'Last detection: '+fmtTime(s.last_detection_time):'Last detection: -';
+  document.getElementById('sc-status').className='stat-card '+(
+    s.status==='ransomware_detected'?'crit':s.status==='suspicious'?'warn':'safe');
+}
+
+async function fetchAll(){
+  try{
+    const [status,events,scans,alerts,procs]=await Promise.all([
+      fetch(`${API}/status`,FETCH_OPTS).then(r=>r.json()),
+      fetch(`${API}/events?limit=200`,FETCH_OPTS).then(r=>r.json()),
+      fetch(`${API}/scan-results?limit=200`,FETCH_OPTS).then(r=>r.json()),
+      fetch(`${API}/mass-alerts?limit=20`,FETCH_OPTS).then(r=>r.json()),
+      fetch(`${API}/suspicious-processes`,FETCH_OPTS).then(r=>r.json()),
+    ]);
+    setConn(true);
+    allEvents=events; allScans=scans;
+    renderStatus(status);
+    renderEvents();
+    renderScans();
+    renderAlerts(alerts);
+    renderProcs(procs);
+  }catch(e){setConn(false);}
+}
+fetchAll(); setInterval(fetchAll,2000);
+
+document.getElementById('event-filters').addEventListener('click',e=>{
+  const btn=e.target.closest('[data-op]');if(!btn)return;
+  document.querySelectorAll('#event-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');eventFilter=btn.dataset.op;renderEvents();
+});
+document.getElementById('scan-filters').addEventListener('click',e=>{
+  const btn=e.target.closest('[data-mal]');if(!btn)return;
+  document.querySelectorAll('#scan-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');scanFilter=btn.dataset.mal;renderScans();
+});
+
+async function manualScan(){
+  const path=document.getElementById('scan-input').value.trim();
+  if(!path)return;
+  const el=document.getElementById('manual-result');
+  el.style.color='var(--muted)';el.textContent='Scanning...';
+  try{
+    const res=await fetch(`${API}/scan-file`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      cache:'no-store',
+      body:JSON.stringify({path})
+    });
+    const r=await res.json();
+    const color=r.malicious?'var(--crit)':r.score>=.4?'var(--warn)':'var(--safe)';
+    el.style.color=color;
+    el.innerHTML=`<b>${r.malicious?'MALICIOUS':'Clean'}</b> &nbsp;|&nbsp;
+      score: <b>${r.score.toFixed(2)}</b> &nbsp;|&nbsp;
+      entropy: <b>${(r.entropy||0).toFixed(2)}</b><br>
+      <span style="color:var(--muted)">${(r.reasons||[]).join(', ')||'no issues found'}</span>`;
+    fetchAll();
+  }catch(e){
+    el.style.color='var(--crit)';el.textContent='Error: '+e.message;
+  }
+}
+document.getElementById('scan-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter')manualScan();
+});
+</script>
 </body>
 </html>
